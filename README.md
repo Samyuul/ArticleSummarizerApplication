@@ -33,10 +33,5 @@ Then in your desired browser access the localhost provided.
 
 ### Hosting on Heroku
 
-The application is also hosted online on Heroku which can be accessed [here](https://articlesummarizerapp.herokuapp.com/)
+The application is also hosted online on Heroku which can be accessed [here](https://article-summarizer-application-fb84fcfa5dbd.herokuapp.com/)
   
-### Troubleshooting Heroku
-- If you find trouble with the Heroku verison, the local version is far more responsive
-- Heroku will take a few moments to load if the app hasn't been in use
-- I recommend pausing for a second or two in between inputs on Heroku
-- If the application doesn't update, I recommend trying another article or another news site, rerunning the application should fix it
