@@ -43,7 +43,7 @@ news_select = 0  # Index to select desired news site
 # Text for markdowns for instructions
 markdown_text1 = '''
 
-Please select a news site below out of **CBC**, **The Guardian**, **NBC**, or **CBS** to view articles from.
+Please select a news site below out of **Global News**, **The Guardian**, **NBC**, or **CBS** to view articles from.
 
 This process will take 15 to 20 seconds depending on your internet speed. 
 
@@ -169,28 +169,32 @@ def summarizeText(text, percent=0.5):
 
     return summary_text[2:], keyword_list, value_list
 
+# -------------------------------------- #
+# ------- The Guardian Functions ------- #
+# -------------------------------------- #
 
 def generateGuardianHeadlines():
     # Get all headlines on front page of the guardian along with URL links
     # Input:  - None
     # Output: - (List of tuples): Contains headlines and URLs as (Headline, URL)
 
-    html_text = requests.get('https://www.theguardian.com/international').text
+    html_text = requests.get('https://www.theguardian.com/international', timeout=10).text
     soup = BeautifulSoup(html_text, 'lxml')
 
     # Find all possible headline hyperlink elements
-    headlines = soup.find_all('a', class_='u-faux-block-link__overlay js-headline-text')[0:25]  # Limit to first 25
+    headlines = soup.find_all('div', class_='dcr-f9aim1')[0:25]  # Limit to first 25
 
     articles = []
-    for headline in headlines:
+    for div in headlines:
 
-        entry = (headline.text, headline['href'])
+        headline = div.find('a');
+
+        entry = (headline['aria-label'], 'https://www.theguardian.com' + headline['href'])
 
         if entry not in articles:  # Avoid duplicates
             articles.append(entry)
 
     return articles
-
 
 def getArticleTextGuardian(url):
     # Return article text based on specified URL
@@ -198,7 +202,7 @@ def getArticleTextGuardian(url):
     # Output: - (String): All text found in article body
 
     # Get HTML of article via URL
-    article_text = requests.get(url).text
+    article_text = requests.get(url, timeout=10).text
     article_html = BeautifulSoup(article_text, 'lxml')
 
     # Get class code for article text
@@ -214,7 +218,6 @@ def getArticleTextGuardian(url):
         total_text += " " + text_container.text
 
     return total_text[1:]
-
 
 def getAllArticleTextGuardian():
     # Partition data into four lists of headlines, URLs, article body, and predicted article class from the Guardian
@@ -252,48 +255,44 @@ def getAllArticleTextGuardian():
 
     return headline_list, url_list, text_list, class_list
 
-
-def generateCBCHeadlines():
-    # Get all headlines on front page of the CBC along with URL links
+# -------------------------------------- #
+# -------- Global News Functions ------- #
+# -------------------------------------- #
+def generateGlobalNewsHeadlines():
+    # Get all headlines on front page of the Global News along with URL links
     # Input:  - None
     # Output: - (List of tuples) Contains headlines and URLs as (Headline, URL)
 
-    html_text = requests.get('https://www.cbc.ca/news').text
+    html_text = requests.get('https://www.globalnews.ca/', timeout=10).text
     soup = BeautifulSoup(html_text, 'lxml')
 
     articles = []
-    headlines = soup.find_all('a', class_='cardText')
+    headlines = soup.find_all('a', class_="c-posts__inner")
 
     # One type of headlines
     for headline in headlines:
 
-        url = 'https://www.cbc.ca' + headline['href']
-        texts = headline.find('h3').text
+        url = headline['href']
+        text = headline.find('span', class_="c-posts__headlineText").text
 
-        if 'photo' not in url and 'player' not in url and 'radio' not in url:  # Only add articles
-            if (texts, url) not in articles:  # Avoid duplicates
-                articles.append((texts, url))
+        entry = (text, url)
 
-    # Another possible headline
-    headlines = soup.find_all('a', class_='cardListing')
-
-    for headline in headlines:
-        articles.append((headline.find('h3', class_='headline').text, 'https://www.cbc.ca' + headline['href']))
+        if entry not in articles:  # Avoid duplicates
+            articles.append(entry)
 
     return articles
 
-
-def getArticleTextCBC(url):
-    # Return article text based on specified URL
-    # Input:  - url (String): URL of desired guardian article
-    # Output: - (String): All text found in article body
+def getArticleTextGlobalNews(url):
+# Return article text based on specified URL
+# Input:  - url (String): URL of desired guardian article
+# Output: - (String): All text found in article body
 
     # Get HTML of article via URL
-    article_text = requests.get(url).text
+    article_text = requests.get(url, timeout=10).text
     article_html = BeautifulSoup(article_text, 'lxml')
 
     # Search for all paragraph elements in article text body
-    article_body = article_html.find('div', class_='story')
+    article_body = article_html.find('article', class_='l-article__text js-story-text')
     sentences = article_body.find_all('p')
 
     total_text = ""
@@ -304,9 +303,8 @@ def getArticleTextCBC(url):
 
     return total_text[1:]
 
-
-def getAllArticleTextCBC():
-    # Partition data into four lists of headlines, URLs, article body, and predicted article class from CBC
+def getAllArticleTextGlobalNews():
+    # Partition data into four lists of headlines, URLs, article body, and predicted article class from the Guardian
 
     # Input:  - None
 
@@ -316,7 +314,7 @@ def getAllArticleTextCBC():
     #         - (List of Integers): predicted article class
 
     # Generate all possible URLs from home page
-    articles = generateCBCHeadlines()
+    articles = generateGuardianHeadlines()
     headline_list = []
     url_list = []
     text_list = []
@@ -326,7 +324,7 @@ def getAllArticleTextCBC():
     for article in articles:
 
         try:  # See if there is an article text body
-            curr_text = getArticleTextCBC(article[1])
+            curr_text = getArticleTextGuardian(article[1])
 
             if curr_text is not None:  # Non-empty text returned
                 headline_list.append(article[0])
@@ -334,43 +332,39 @@ def getAllArticleTextCBC():
                 text_list.append(curr_text)
                 class_list.append(predictClass(curr_text))  # Predict Using SVM Model
 
-        except (Exception, ):  # Ignore the request
+        except (Exception, ):  # No text body found
             pass
 
         time.sleep(0.25)  # Limit request rate
 
     return headline_list, url_list, text_list, class_list
 
+# -------------------------------------- #
+# ----------- NBC Functions ------------ #
+# -------------------------------------- #
 
 def generateNBCHeadlines():
     # Get all headlines on front page of NBC along with URL links
     # Input:  - None
     # Output: - (List of tuples): Contains headlines and URLs as (Headline, URL)
 
-    html_text = requests.get('https://www.nbcnews.com/').text
+    html_text = requests.get('https://www.nbcnews.com/', timeout=10).text
     soup = BeautifulSoup(html_text, 'lxml')
 
     # Find all hyperlinks
     articles = []
-    headlines = soup.find_all('div', class_='alacarte__text-wrapper')
+    headlines = soup.find_all('h2', class_='styles_teaseTitle__H4OWQ')
 
     # Loop for each possible headline
-    for headline in headlines:
+    for div in headlines:
 
-        try:  # Contains more than one 'a' element
-            url = headline.find_all('a')[1]['href']
-            text = headline.find_all('a')[1].text
-        except (Exception, ):  # Only one singular 'a' element
-            url = headline.find('a')['href']
-            text = headline.text
+        headline = div.find('a')
+        entry = (headline.text, headline['href'])
 
-        # Ignore videos
-        if 'video' not in url:
-            if (text, url) not in articles:  # Avoid duplicates
-                articles.append((text, url))
+        if entry not in articles:  # Avoid duplicates
+            articles.append(entry)
 
     return articles
-
 
 def getArticleTextNBC(url):
     # Return article text based on specified URL from NBC
@@ -378,7 +372,7 @@ def getArticleTextNBC(url):
     # Output: - (String): All text found in article body
 
     # Get HTML of article via URL
-    article_text = requests.get(url).text
+    article_text = requests.get(url, timeout=10).text
     article_html = BeautifulSoup(article_text, 'lxml')
     article_body = article_html.find('div', class_='article-body__content')
     sentences = article_body.find_all('p')
@@ -388,7 +382,6 @@ def getArticleTextNBC(url):
         total_text += " " + sentence.text
 
     return total_text[1:]
-
 
 def getAllArticleTextNBC():
     # Partition data into four lists of headlines, URLs, article body, and predicted article class from NBC
@@ -426,13 +419,16 @@ def getAllArticleTextNBC():
 
     return headline_list, url_list, text_list, class_list
 
+# -------------------------------------- #
+# ----------- CBS Functions ------------ #
+# -------------------------------------- #
 
 def generateCBSHeadlines():
     # Get all headlines on front page of CBS along with URL links
     # Input:  - None
     # Output: - (List of tuples): Contains headlines and URLs as (Headline, URL)
 
-    html_text = requests.get('https://www.cbsnews.com/').text
+    html_text = requests.get('https://www.cbsnews.com/', timeout=10).text
     soup = BeautifulSoup(html_text, 'lxml')
 
     # Find all hyperlinks
@@ -454,14 +450,13 @@ def generateCBSHeadlines():
 
     return articles
 
-
 def getArticleTextCBS(url):
     # Return article text based on specified URL from CBS
     # Input:  - url (String): URL of desired CBS article
     # Output: - (String): All text found in article body
 
     # Get HTML of article via URL
-    article_text = requests.get(url).text
+    article_text = requests.get(url, timeout=10).text
     article_html = BeautifulSoup(article_text, 'lxml')
     article_body = article_html.find('section', class_='content__body')
     sentences = article_body.find_all('p')
@@ -471,7 +466,6 @@ def getArticleTextCBS(url):
         total_text += " " + sentence.text
 
     return total_text[1:]
-
 
 def getAllArticleTextCBS():
     # Partition data into four lists of headlines, URLs, article body, and predicted article class from CBS
@@ -553,9 +547,8 @@ def predictClass(text):
     else:  # Return unclassified
         return 5
 
-
 # Function Dictionary for article scrapping
-get_func = {0: getAllArticleTextCBC, 1: getAllArticleTextGuardian, 2: getAllArticleTextNBC, 3: getAllArticleTextCBS}
+get_func = {0: getAllArticleTextGlobalNews, 1: getAllArticleTextGuardian, 2: getAllArticleTextNBC, 3: getAllArticleTextCBS}
 
 # App
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -585,7 +578,7 @@ app.layout = html.Div([
 
                 dcc.Dropdown(  # Dropdown selector for news site
                     options=[
-                        {'label': 'CBC', 'value': 0},
+                        {'label': 'Global News', 'value': 0},
                         {'label': 'The Guardian', 'value': 1},
                         {'label': 'NBC', 'value': 2},
                         {'label': 'CBS', 'value': 3}
@@ -720,7 +713,7 @@ def update_article_selector(news_site):
     # Generates the list of headlines, URLs, article body, and predicted article class for a specific news site
 
     # Input: - news_site (Integer): Index that controls current selected news site:
-    #          (0 = CBC, 1 = The Guardian, 2 = NBC, 3 = CBS)
+    #          (0 = Global News, 1 = The Guardian, 2 = NBC, 3 = CBS)
 
     # Output: - (List of Integers): Controls selected filter tags (Defaults to Select All)
     #         - (String): Empty output in order to update children of loading component to induce loading screen
@@ -748,7 +741,7 @@ def filter_list(tags_select, news_site):
     # Input: - tags_select (List of Integers): A list containing desired tags corresponding to:
     #          (0 = Business, 1 = Entertainment, 2 = Politics, 3 = Sports, 4 = Tech, 5 = Uncategorized)
     #        - news_site (Integer): Index that controls current selected news site:
-    #          (0 = CBC, 1 = The Guardian, 2 = NBC, 3 = CBS)
+    #          (0 = Global News, 1 = The Guardian, 2 = NBC, 3 = CBS)
 
     # Output: - (List of tuples): Contains possible article headlines and corresponding index in the total list as
     #           (headline, index)
@@ -779,7 +772,7 @@ def update_article_text(index, news_site):
 
     # Input: - index (Integer): Index of desired article body in the total article list
     #        - news_site (Integer): Index that controls current selected news site:
-    #        (0 = CBC, 1 = The Guardian, 2 = NBC, 3 = CBS)
+    #        (0 = Global News, 1 = The Guardian, 2 = NBC, 3 = CBS)
 
     # Output - (String): Summarized article text
     #        - (Graph): Word occurrence histogram
