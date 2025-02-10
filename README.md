@@ -1,5 +1,5 @@
 # Article Summarizer Application
-This project scrapes articles from the front page of [CBC](https://www.cbc.ca/news/canada), [The Guardian](https://www.theguardian.com/international), [NBC](https://www.nbcnews.com/) and [CBS](https://www.cbsnews.com/). In addition, it provides a summarized version of the text using an extractive summarization technique alongside keywords present in the article. Furthemore, you can filter the category of the raticle by: Business, Entertainment, Politics, Sports, Technology, and Uncategorized.
+This project scrapes articles from the front page of [Global News](https://www.globalnews.ca/), [The Guardian](https://www.theguardian.com/international), [NBC](https://www.nbcnews.com/) and [CBS](https://www.cbsnews.com/). In addition, it provides a summarized version of the text using an extractive summarization technique alongside keywords present in the article. Furthemore, you can filter the category of the raticle by: Business, Entertainment, Politics, Sports, Technology, and Uncategorized.
 
 <p align="center">
   <img src="pictures/screenshot.PNG" alt="Screenshot Application"/>
